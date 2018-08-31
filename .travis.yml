@@ -1,0 +1,13 @@
+language: go
+
+go:
+  - "1.11"
+
+sudo: false
+
+install:
+  - go get -u golang.org/x/lint/golint
+
+script:
+  - golint -set_exit_status
+  - go test
