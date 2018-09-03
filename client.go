@@ -14,13 +14,16 @@ import (
 type Client struct {
 	url        string
 	httpClient *http.Client
+	reqOpts    []func(*http.Request)
 }
 
-// New returns a new client.
-func New(url string, httpClient *http.Client) *Client {
+// New returns a new client. The optional reqOpts will be applied to all
+// requests.
+func New(url string, httpClient *http.Client, reqOpts ...func(*http.Request)) *Client {
 	return &Client{
-		url:        url,
 		httpClient: httpClient,
+		url:        url,
+		reqOpts:    reqOpts,
 	}
 }
 
@@ -29,6 +32,7 @@ func New(url string, httpClient *http.Client) *Client {
 // and returned as an error. If there are no errors, the value of the "data"
 // field of the response object with be unmarshaled into the "data" argument.
 // reqOpts can be used to inspect or modify the request before it gets sent.
+// These reqOpts are run after any reqOpts passed to func New.
 func (c *Client) Query(ctx context.Context, query string, variables map[string]interface{}, data interface{}, reqOpts ...func(*http.Request)) error {
 	body, err := json.Marshal(
 		map[string]interface{}{
@@ -48,6 +52,10 @@ func (c *Client) Query(ctx context.Context, query string, variables map[string]i
 	req = req.WithContext(ctx)
 
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+
+	for _, o := range c.reqOpts {
+		o(req)
+	}
 
 	for _, o := range reqOpts {
 		o(req)

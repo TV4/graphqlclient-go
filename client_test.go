@@ -50,14 +50,23 @@ func TestClient_Query(t *testing.T) {
 			"bar-variable": 123,
 		}
 		var data interface{}
-		reqOpt := func(req *http.Request) {
+
+		calledReqOpts := []string{}
+
+		reqOptNew := func(req *http.Request) {
+			calledReqOpts = append(calledReqOpts, "opt-passed-to-new")
+			req.Header.Set("Foo-Header", "old-foo-header-value")
+		}
+
+		reqOptQuery := func(req *http.Request) {
+			calledReqOpts = append(calledReqOpts, "opt-passed-to-query")
 			req.Header.Set("Foo-Header", "foo-header-value")
 			gotCtxValue = req.Context().Value(ctxKey)
 		}
 
-		c := New(ts.URL, &http.Client{})
+		c := New(ts.URL, &http.Client{}, reqOptNew)
 
-		if err := c.Query(ctx, query, variables, &data, reqOpt); err != nil {
+		if err := c.Query(ctx, query, variables, &data, reqOptQuery); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
@@ -67,6 +76,18 @@ func TestClient_Query(t *testing.T) {
 
 		if got, want := gotFooHeader, "foo-header-value"; got != want {
 			t.Errorf("Foo-Header = %q, want %q", got, want)
+		}
+
+		wantCalledReqOpts := []string{"opt-passed-to-new", "opt-passed-to-query"}
+		if len(calledReqOpts) != len(wantCalledReqOpts) {
+			t.Errorf("req opts called = %q, want %q", calledReqOpts, wantCalledReqOpts)
+		} else {
+			for n := range wantCalledReqOpts {
+				if calledReqOpts[n] != wantCalledReqOpts[n] {
+					t.Errorf("req opts called = %q, want %q", calledReqOpts, wantCalledReqOpts)
+					break
+				}
+			}
 		}
 
 		wantBody := []byte(`{"query":"foo-query","variables":{"bar-variable":123,"foo-variable":"foo-value"}}`)
