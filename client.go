@@ -41,12 +41,12 @@ func (c *Client) Query(ctx context.Context, query string, variables map[string]i
 		},
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("error encoding variables: %v", err)
 	}
 
 	req, err := http.NewRequest(http.MethodPost, c.url, bytes.NewReader(body))
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating request: %v", err)
 	}
 
 	req = req.WithContext(ctx)
@@ -63,7 +63,7 @@ func (c *Client) Query(ctx context.Context, query string, variables map[string]i
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("error performing request: %v", err)
 	}
 
 	var response struct {
@@ -72,7 +72,7 @@ func (c *Client) Query(ctx context.Context, query string, variables map[string]i
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return err
+		return fmt.Errorf("error decoding response: %v", err)
 	}
 
 	if len(response.Errors) > 0 {
@@ -82,7 +82,11 @@ func (c *Client) Query(ctx context.Context, query string, variables map[string]i
 		}
 	}
 
-	return json.Unmarshal(response.Data, &data)
+	if err := json.Unmarshal(response.Data, &data); err != nil {
+		return fmt.Errorf("error data payload: %v", err)
+	}
+
+	return nil
 }
 
 // ErrorResponse wraps the HTTP status code returned from the server and the

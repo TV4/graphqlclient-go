@@ -3,13 +3,13 @@ package graphqlclient
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 )
@@ -164,8 +164,8 @@ func TestClient_Query(t *testing.T) {
 			t.Fatal("err is nil")
 		}
 
-		if _, ok := err.(*json.SyntaxError); !ok {
-			t.Errorf("err is %T, want %T", err, &json.SyntaxError{})
+		if got, wantPrefix := err.Error(), "error decoding response: invalid character"; !strings.HasPrefix(got, wantPrefix) {
+			t.Errorf("err = %q, want prefix %q", got, wantPrefix)
 		}
 	})
 }
