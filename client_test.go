@@ -110,42 +110,83 @@ func TestClient_Query(t *testing.T) {
 	})
 
 	t.Run("ErrorResponse", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusTeapot)
-				w.Write([]byte(`{"errors":[{"message":"error-msg-1"},{"message":"error-msg-2"}]}`))
-			},
-		))
-		defer ts.Close()
+		t.Run("JSONResponseBody", func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(
+				func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusTeapot)
+					w.Write([]byte(`{"errors":[{"message":"error-msg-1"},{"message":"error-msg-2"}]}`))
+				},
+			))
+			defer ts.Close()
 
-		c := New(ts.URL, &http.Client{})
+			c := New(ts.URL, &http.Client{})
 
-		err := c.Query(context.Background(), "", nil, nil)
+			err := c.Query(context.Background(), "", nil, nil)
 
-		if err == nil {
-			t.Fatal("err is nil")
-		}
+			if err == nil {
+				t.Fatal("err is nil")
+			}
 
-		errResp, ok := err.(*ErrorResponse)
-		if !ok {
-			t.Fatalf("err is %T, want %T", err, &ErrorResponse{})
-		}
+			errResp, ok := err.(*ErrorResponse)
+			if !ok {
+				t.Fatalf("err is %T, want %T", err, &ErrorResponse{})
+			}
 
-		if got, want := errResp.StatusCode, http.StatusTeapot; got != want {
-			t.Errorf("errResp.StatusCode = %d, want %d", got, want)
-		}
+			if got, want := errResp.StatusCode, http.StatusTeapot; got != want {
+				t.Errorf("errResp.StatusCode = %d, want %d", got, want)
+			}
 
-		if got, want := len(errResp.Errors), 2; got != want {
-			t.Fatalf("len(errResp.Errors) = %d, want %d", got, want)
-		}
+			if got, want := len(errResp.Errors), 2; got != want {
+				t.Fatalf("len(errResp.Errors) = %d, want %d", got, want)
+			}
 
-		if got, want := errResp.Errors[0].Message, "error-msg-1"; got != want {
-			t.Errorf("errResp.Errors[0].Message = %q, want %q", got, want)
-		}
+			if got, want := errResp.Errors[0].Message, "error-msg-1"; got != want {
+				t.Errorf("errResp.Errors[0].Message = %q, want %q", got, want)
+			}
 
-		if got, want := errResp.Errors[1].Message, "error-msg-2"; got != want {
-			t.Errorf("errResp.Errors[1].Message = %q, want %q", got, want)
-		}
+			if got, want := errResp.Errors[1].Message, "error-msg-2"; got != want {
+				t.Errorf("errResp.Errors[1].Message = %q, want %q", got, want)
+			}
+
+			if got, want := errResp.Body, []byte(`{"errors":[{"message":"error-msg-1"},{"message":"error-msg-2"}]}`); !bytes.Equal(got, want) {
+				t.Errorf("errResp.Body = %q, want %q", got, want)
+			}
+		})
+
+		t.Run("NonJSONResponseBody", func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(
+				func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusTeapot)
+					w.Write([]byte("not JSON"))
+				},
+			))
+			defer ts.Close()
+
+			c := New(ts.URL, &http.Client{})
+
+			err := c.Query(context.Background(), "", nil, nil)
+
+			if err == nil {
+				t.Fatal("err is nil")
+			}
+
+			errResp, ok := err.(*ErrorResponse)
+			if !ok {
+				t.Fatalf("err is %T, want %T", err, &ErrorResponse{})
+			}
+
+			if got, want := errResp.StatusCode, http.StatusTeapot; got != want {
+				t.Errorf("errResp.StatusCode = %d, want %d", got, want)
+			}
+
+			if got, want := len(errResp.Errors), 0; got != want {
+				t.Fatalf("len(errResp.Errors) = %d, want %d", got, want)
+			}
+
+			if got, want := errResp.Body, []byte("not JSON"); !bytes.Equal(got, want) {
+				t.Errorf("errResp.Body = %q, want %q", got, want)
+			}
+		})
 	})
 
 	t.Run("MalformedJSONResponse", func(t *testing.T) {

@@ -77,7 +77,17 @@ func (c *Client) Query(ctx context.Context, query string, variables map[string]i
 		Errors []Error         `json:"errors"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+	var respBody io.Reader = resp.Body
+	var respBodyBuf bytes.Buffer
+	respBody = io.TeeReader(respBody, &respBodyBuf)
+
+	if err := json.NewDecoder(respBody).Decode(&response); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return &ErrorResponse{
+				StatusCode: resp.StatusCode,
+				Body:       respBodyBuf.Next(2048),
+			}
+		}
 		return fmt.Errorf("error decoding response: %v", err)
 	}
 
@@ -85,6 +95,7 @@ func (c *Client) Query(ctx context.Context, query string, variables map[string]i
 		return &ErrorResponse{
 			StatusCode: resp.StatusCode,
 			Errors:     response.Errors,
+			Body:       respBodyBuf.Next(2048),
 		}
 	}
 
@@ -96,9 +107,11 @@ func (c *Client) Query(ctx context.Context, query string, variables map[string]i
 }
 
 // ErrorResponse wraps the HTTP status code returned from the server and the
-// value of the response object's "errors" array.
+// value of the response object's "errors" array. If the response body is not
+// JSON, up to the first 2048 bytes of it will be stored in the Body field.
 type ErrorResponse struct {
 	StatusCode int
+	Body       []byte
 	Errors     []Error
 }
 
