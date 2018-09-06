@@ -82,7 +82,7 @@ func (c *Client) Query(ctx context.Context, query string, variables map[string]i
 	respBody = io.TeeReader(respBody, &respBodyBuf)
 
 	if err := json.NewDecoder(respBody).Decode(&response); err != nil {
-		if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode/100 != 2 {
 			return &ErrorResponse{
 				StatusCode: resp.StatusCode,
 				Body:       respBodyBuf.Next(2048),
@@ -91,7 +91,7 @@ func (c *Client) Query(ctx context.Context, query string, variables map[string]i
 		return fmt.Errorf("error decoding response: %v", err)
 	}
 
-	if resp.StatusCode != http.StatusOK || len(response.Errors) > 0 {
+	if resp.StatusCode/100 != 2 || len(response.Errors) > 0 {
 		return &ErrorResponse{
 			StatusCode: resp.StatusCode,
 			Errors:     response.Errors,
