@@ -89,7 +89,7 @@ func (c *Client) Query(ctx context.Context, query string, variables map[string]i
 	}
 
 	if err := json.Unmarshal(response.Data, &data); err != nil {
-		return fmt.Errorf("error data payload: %v", err)
+		return fmt.Errorf("error decoding data payload: %v", err)
 	}
 
 	return nil
