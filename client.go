@@ -91,7 +91,7 @@ func (c *Client) Query(ctx context.Context, query string, variables map[string]i
 		return fmt.Errorf("error decoding response: %v", err)
 	}
 
-	if len(response.Errors) > 0 {
+	if resp.StatusCode != http.StatusOK || len(response.Errors) > 0 {
 		return &ErrorResponse{
 			StatusCode: resp.StatusCode,
 			Errors:     response.Errors,
@@ -132,6 +132,8 @@ func (e *ErrorResponse) Error() string {
 	var errMsg string
 	if len(e.Errors) > 0 {
 		errMsg = e.Errors[0].Message
+	} else {
+		errMsg = string(e.Body)
 	}
 	return fmt.Sprintf("%d %s: %s", e.StatusCode, http.StatusText(e.StatusCode), errMsg)
 }
