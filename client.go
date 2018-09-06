@@ -7,6 +7,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -65,6 +67,10 @@ func (c *Client) Query(ctx context.Context, query string, variables map[string]i
 	if err != nil {
 		return fmt.Errorf("error performing request: %v", err)
 	}
+	defer func() {
+		io.CopyN(ioutil.Discard, resp.Body, 64)
+		resp.Body.Close()
+	}()
 
 	var response struct {
 		Data   json.RawMessage `json:"data"`
